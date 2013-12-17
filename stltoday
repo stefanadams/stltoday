@@ -1,0 +1,33 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use File::Basename;
+use Mojo::UserAgent;
+use Getopt::Long;
+
+my $t;
+my $s;
+GetOptions(
+	'team|t=i' => \$t,
+	'sport|s=s' => \$s,
+);
+
+my $ua = Mojo::UserAgent->new;
+my %files = ();
+
+frame("http://stats.stlhighschoolsports.com/sports/$s/stats/teamschedule$t.php");
+
+sub frame {
+	my ($url) = @_;
+	my $file = basename($url, '.php').'.html';
+	return if $files{$file};
+	$files{$file}++;
+	my $get = $ua->get($url);
+	return unless $get->res->code == 200;
+warn "$url -> $file\n";
+	open A, ">$file";
+	print A $get->res->dom("head, div#tncms-region-center-one-b-index");
+	close A;
+	$get->res->dom("a")->attr("href")->grep(sub { /^http:/ ? 0 : /\.php$/ ? 1 : 0 })->each(sub { frame($_[0] =~ /^\// ? "http://stats.stlhighschoolsports.com$_[0]" : "http://stats.stlhighschoolsports.com/sports/$s/stats/$_[0]") });
+}
